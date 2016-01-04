@@ -38,7 +38,9 @@ namespace lndcreditwatch
                 }
             }
 
-            Console.WriteLine($" acceptable cost per interval: ${Config.Default.AcceptableCostPerInterval}");
+            Console.WriteLine($" fixed cost per interval: ${Config.Default.FixedCostPerInterval}");
+            Console.WriteLine($" variable cost per interval: ${Config.Default.VariableCostPerInterval}");
+            Console.WriteLine($" total cost per interval: ${Config.Default.TotalCostPerInterval}");
 
             using (LNDynamic client = new LNDynamic(Config.Default.APIID.GetPlainText(), Config.Default.APIKey.GetPlainText()))
             {
@@ -54,25 +56,27 @@ namespace lndcreditwatch
                     double CostForThisInterval = Config.Default.PreviousCreditBalance - CurrentCreditBalance;
                     Console.WriteLine($" cost for this interval: ${CostForThisInterval}");
 
-                    if (CostForThisInterval > Config.Default.AcceptableCostPerInterval)
+                    if (CostForThisInterval > Config.Default.TotalCostPerInterval)
                     {
                         // We spent too much during this last interval!
-                        double OverspendAmount = CostForThisInterval - Config.Default.AcceptableCostPerInterval;
-                        double OverspendPercent = (CostForThisInterval - Config.Default.AcceptableCostPerInterval) / Config.Default.AcceptableCostPerInterval;
-                        Console.WriteLine($" OVERSPEND by ${OverspendAmount}");
-                        Console.WriteLine($" in other words, {OverspendPercent:P} extra was spent");
-                        File.AppendAllText(DailyUsageFilename, $"OVERSPEND ${OverspendAmount} {OverspendPercent:P}\r\n");
-                        SendEmail($"lndcreditwatch noticed you overspent by ${OverspendAmount}, which is {OverspendPercent:P} more than is acceptable");
+                        double TotalOverspendAmount = CostForThisInterval - Config.Default.TotalCostPerInterval;
+                        double TotalOverspendPercent = TotalOverspendAmount / Config.Default.TotalCostPerInterval;
+                        double VariableOverspendPercent = TotalOverspendAmount / Config.Default.VariableCostPerInterval;
+                        Console.WriteLine($" OVERSPEND by ${TotalOverspendAmount}");
+                        Console.WriteLine($" in other words, {VariableOverspendPercent:P} more was spent on variable costs ({TotalOverspendPercent:P} overall)");
+                        File.AppendAllText(DailyUsageFilename, $"OVERSPEND ${TotalOverspendAmount} {VariableOverspendPercent:P} {TotalOverspendPercent:P}\r\n");
+                        SendEmail($"lndcreditwatch noticed you overspent by ${TotalOverspendAmount} ({VariableOverspendPercent:P} more was spent on variable costs, or {TotalOverspendPercent:P} overall)");
                     }
                     else
                     {
                         // We were within our spending limit
-                        double UnderspendAmount = Config.Default.AcceptableCostPerInterval - CostForThisInterval;
-                        double UnderspendPercent = (Config.Default.AcceptableCostPerInterval - CostForThisInterval) / Config.Default.AcceptableCostPerInterval;
-                        Console.WriteLine($" UNDERSPEND by ${UnderspendAmount}");
-                        Console.WriteLine($" in other words, {UnderspendPercent:P} was saved");
-                        File.AppendAllText(DailyUsageFilename, $"UNDERSPEND ${UnderspendAmount} {UnderspendPercent:P}\r\n");
-                        if (Debugger.IsAttached) SendEmail($"lndcreditwatch noticed you underspend by ${UnderspendAmount}, which is a savings of {UnderspendPercent:P}");
+                        double TotalUnderspendAmount = Config.Default.TotalCostPerInterval - CostForThisInterval;
+                        double TotalUnderspendPercent = TotalUnderspendAmount / Config.Default.TotalCostPerInterval;
+                        double VariableUnderspendPercent = TotalUnderspendAmount / Config.Default.VariableCostPerInterval;
+                        Console.WriteLine($" UNDERSPEND by ${TotalUnderspendAmount}");
+                        Console.WriteLine($" in other words, {VariableUnderspendPercent:P} less was spent on variable costs ({TotalUnderspendPercent:P} overall)");
+                        File.AppendAllText(DailyUsageFilename, $"UNDERSPEND ${TotalUnderspendAmount} {VariableUnderspendPercent:P} {TotalUnderspendPercent:P}\r\n");
+                        if (Debugger.IsAttached) SendEmail($"lndcreditwatch noticed you underspent by ${TotalUnderspendAmount} ({VariableUnderspendPercent:P} less was spent on variable costs, or {TotalUnderspendPercent:P} overall)");
                     }
                 }
                 else

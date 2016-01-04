@@ -10,9 +10,9 @@ namespace lndcreditwatch
 {
     class Config : ConfigHelper
     {
-        public double AcceptableCostPerInterval { get; set; }
         public RMSecureString APIID { get; set; }
         public RMSecureString APIKey { get; set; }
+        public double FixedCostPerInterval { get; set; }
         public double PreviousCreditBalance { get; set; }
         public string SmtpFromAddress { get; set; }
         public string SmtpHostname { get; set; }
@@ -21,6 +21,7 @@ namespace lndcreditwatch
         public bool SmtpSsl { get; set; }
         public string SmtpToAddress { get; set; }
         public string SmtpUsername { get; set; }
+        public double VariableCostPerInterval { get; set; }
 
         public static Config Default = new Config();
 
@@ -80,23 +81,37 @@ namespace lndcreditwatch
                 }
                 Console.WriteLine();
 
-                Console.WriteLine(" What is the acceptable cost per interval?");
-                Console.WriteLine(" For example, if you plan to run this as an hourly scheduled task, then add up");
-                Console.WriteLine(" the fixed hourly cost of all your virtual machines, and then also calculate");
-                Console.WriteLine(" the variable cost of your expected virtual cpu usage on any flexible plans.");
-                Console.WriteLine();
-                Console.WriteLine(" In my case I have one flexible virtual machine which costs $0.00972222 hourly,");
-                Console.WriteLine(" and I want to be alerted if I'm using more than 10% of a core, so I calculate");
-                Console.WriteLine(" $16 per cpu core per month / 30 days per month / 24 hours per day * 10%");
-                Console.WriteLine(" This works out to $0.00222222, so I add that to the fixed cost of $0.00972222,");
-                Console.WriteLine(" which is $0.01194444, so that's what I would enter on the prompt below.");
+                Console.WriteLine(" What are you fixed costs per interval?");
+                Console.WriteLine(" For example, if you have one flexible virtual machine that costs $0.0097 per");
+                Console.WriteLine(" hour, then your fixed cost is $0.0097 (assuming you run lndcreditwatch hourly)");
                 while (true)
                 {
                     Console.Write(" > ");
                     double TempDouble;
                     if (double.TryParse(Console.ReadLine().TrimStart('$').Trim(), out TempDouble))
                     {
-                        this.AcceptableCostPerInterval = TempDouble;
+                        this.FixedCostPerInterval = TempDouble;
+                        break;
+                    }
+                    else
+                    {
+                        Console.WriteLine(" ERROR: Invalid input, try again");
+                    }
+                }
+                Console.WriteLine();
+
+                Console.WriteLine(" What are you variable costs per interval?");
+                Console.WriteLine(" For example, if you have one flexible virtual machine that you want to be");
+                Console.WriteLine(" alerted about if you use more than 10% of a core, you would calculate:");
+                Console.WriteLine("  $16 per cpu core per month / 30 days per month / 24 hours per day * 10%");
+                Console.WriteLine(" That is $0.00222222, so enter that (assuming you run lndcreditwatch hourly)");
+                while (true)
+                {
+                    Console.Write(" > ");
+                    double TempDouble;
+                    if (double.TryParse(Console.ReadLine().TrimStart('$').Trim(), out TempDouble))
+                    {
+                        this.VariableCostPerInterval = TempDouble;
                         break;
                     }
                     else
@@ -107,12 +122,29 @@ namespace lndcreditwatch
                 Console.WriteLine();
 
                 base.Save();
+
+                Console.WriteLine(" There's some additional settings related to email notifications that I'm");
+                Console.WriteLine(" too lazy to prompt you for here, so please go edit the settings here:");
+                Console.WriteLine($" {base.FileName}");
+                Console.WriteLine();
+                Console.WriteLine(" Hit a key to finish setup");
+                Console.ReadKey();
+
+                Console.Clear();
             }
         }
 
         public new void Save()
         {
             base.Save();
+        }
+
+        public double TotalCostPerInterval
+        {
+            get
+            {
+                return this.FixedCostPerInterval + this.VariableCostPerInterval;
+            }
         }
     }
 }
