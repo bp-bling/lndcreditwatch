@@ -1,9 +1,11 @@
 ﻿using lndapi;
+using RandM.RMLib;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Mail;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,17 +21,16 @@ namespace lndcreditwatch
 
         static async Task MainAsync(string[] args)
         {
-            Console.WriteLine(" lnd credit watch starting up");
+            Console.WriteLine(" lndcreditwatch starting up");
 
+            string DailyUsageFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dailyusage.txt");
             if (DateTime.Now.Hour == 0)
             {
                 Console.WriteLine(" midnight hour, alerting previous day's usage");
-                string DailyUsageFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dailyusage.txt");
                 if (File.Exists(DailyUsageFilename))
                 {
                     // Alert daily usage
-                    string[] DailyUsage = File.ReadAllLines(DailyUsageFilename);
-                    // TODO Send an email with DailyUsage
+                    SendEmail($"lndcreditwatch daily recap:\r\n\r\n{File.ReadAllText(DailyUsageFilename)}");
 
                     // And reset
                     File.Delete(DailyUsageFilename);
@@ -55,22 +56,28 @@ namespace lndcreditwatch
                     if (CostForThisInterval > Config.Default.AcceptableCostPerInterval)
                     {
                         // We spent too much during this last interval!
-                        Console.WriteLine($" OVERSPEND by ${CostForThisInterval - Config.Default.AcceptableCostPerInterval}");
-                        Console.WriteLine($" in other words, {(CostForThisInterval - Config.Default.AcceptableCostPerInterval) / Config.Default.AcceptableCostPerInterval:P} extra was spent");
-                        // TODO Send an eail alert
+                        double OverspendAmount = CostForThisInterval - Config.Default.AcceptableCostPerInterval;
+                        double OverspendPercent = (CostForThisInterval - Config.Default.AcceptableCostPerInterval) / Config.Default.AcceptableCostPerInterval;
+                        Console.WriteLine($" OVERSPEND by ${OverspendAmount}");
+                        Console.WriteLine($" in other words, {OverspendPercent:P} extra was spent");
+                        File.AppendAllText(DailyUsageFilename, $"OVERSPEND ${OverspendAmount} {OverspendPercent:P}");
+                        SendEmail($"lndcreditwatch noticed you overspent by ${OverspendAmount}, which is ${OverspendPercent:P} more than is acceptable");
                     }
                     else
                     {
                         // We were within our spending limit
-                        Console.WriteLine($" UNDERSPEND by ${Config.Default.AcceptableCostPerInterval - CostForThisInterval}");
-                        Console.WriteLine($" in other words, {(Config.Default.AcceptableCostPerInterval - CostForThisInterval) / Config.Default.AcceptableCostPerInterval:P} was saved");
+                        double UnderspendAmount = Config.Default.AcceptableCostPerInterval - CostForThisInterval;
+                        double UnderspendPercent = (Config.Default.AcceptableCostPerInterval - CostForThisInterval) / Config.Default.AcceptableCostPerInterval;
+                        Console.WriteLine($" UNDERSPEND by ${UnderspendAmount}");
+                        Console.WriteLine($" in other words, {UnderspendPercent:P} was saved");
+                        File.AppendAllText(DailyUsageFilename, $"UNDERSPEND ${UnderspendAmount} {UnderspendPercent:P}");
                     }
                 }
                 else
                 {
                     // No previous balance, so send an email alert saying watch has been setup
                     Console.WriteLine(" previous credit balance: N/A (looks like this is our first run)");
-                    // TODO Send an email alert
+                    SendEmail("lndcreditwatch is now monitoring your account!");
                 }
 
                 // Store current credit as previous credit
@@ -79,6 +86,22 @@ namespace lndcreditwatch
 
                 Console.WriteLine(" done");
             }
+        }
+
+        private static void SendEmail(string body)
+        {
+            WebUtils.Email(Config.Default.SmtpHostname,
+                Config.Default.SmtpPort,
+                new MailAddress(Config.Default.FromEmailAddress),
+                new MailAddress(Config.Default.ToEmailAddress),
+                new MailAddress(Config.Default.FromEmailAddress),
+                "lndcreditwatch notification",
+                body,
+                false,
+                Config.Default.SmtpUsername,
+                Config.Default.SmtpPassword,
+                Config.Default.SmtpSsl
+            );
         }
     }
 }
