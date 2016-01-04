@@ -23,6 +23,7 @@ namespace lndcreditwatch
         {
             Console.WriteLine(" lndcreditwatch starting up");
 
+            // Handle the midnight hour, which will alert us to the usage from the previous day
             string DailyUsageFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dailyusage.txt");
             if (DateTime.Now.Hour == 0)
             {
@@ -60,8 +61,8 @@ namespace lndcreditwatch
                         double OverspendPercent = (CostForThisInterval - Config.Default.AcceptableCostPerInterval) / Config.Default.AcceptableCostPerInterval;
                         Console.WriteLine($" OVERSPEND by ${OverspendAmount}");
                         Console.WriteLine($" in other words, {OverspendPercent:P} extra was spent");
-                        File.AppendAllText(DailyUsageFilename, $"OVERSPEND ${OverspendAmount} {OverspendPercent:P}");
-                        SendEmail($"lndcreditwatch noticed you overspent by ${OverspendAmount}, which is ${OverspendPercent:P} more than is acceptable");
+                        File.AppendAllText(DailyUsageFilename, $"OVERSPEND ${OverspendAmount} {OverspendPercent:P}\r\n");
+                        SendEmail($"lndcreditwatch noticed you overspent by ${OverspendAmount}, which is {OverspendPercent:P} more than is acceptable");
                     }
                     else
                     {
@@ -70,7 +71,8 @@ namespace lndcreditwatch
                         double UnderspendPercent = (Config.Default.AcceptableCostPerInterval - CostForThisInterval) / Config.Default.AcceptableCostPerInterval;
                         Console.WriteLine($" UNDERSPEND by ${UnderspendAmount}");
                         Console.WriteLine($" in other words, {UnderspendPercent:P} was saved");
-                        File.AppendAllText(DailyUsageFilename, $"UNDERSPEND ${UnderspendAmount} {UnderspendPercent:P}");
+                        File.AppendAllText(DailyUsageFilename, $"UNDERSPEND ${UnderspendAmount} {UnderspendPercent:P}\r\n");
+                        if (Debugger.IsAttached) SendEmail($"lndcreditwatch noticed you underspend by ${UnderspendAmount}, which is a savings of {UnderspendPercent:P}");
                     }
                 }
                 else
@@ -90,18 +92,48 @@ namespace lndcreditwatch
 
         private static void SendEmail(string body)
         {
-            WebUtils.Email(Config.Default.SmtpHostname,
-                Config.Default.SmtpPort,
-                new MailAddress(Config.Default.FromEmailAddress),
-                new MailAddress(Config.Default.ToEmailAddress),
-                new MailAddress(Config.Default.FromEmailAddress),
-                "lndcreditwatch notification",
-                body,
-                false,
-                Config.Default.SmtpUsername,
-                Config.Default.SmtpPassword,
-                Config.Default.SmtpSsl
-            );
+            if (Config.Default.SmtpToAddress == "lndcreditwatch@localhost")
+            {
+                Console.WriteLine();
+                Console.WriteLine("*******************************************************************************");
+                Console.WriteLine(" please edit this file to customize your smtp settings to allow email delivery");
+                Console.WriteLine(" (sorry, it's not currently possible to specify a password, if your smtp server");
+                Console.WriteLine(" requires it let me know and I'll look into making that configurable)");
+                Console.WriteLine($" {Config.Default.FileName}");
+                Console.WriteLine("*******************************************************************************");
+                Console.WriteLine();
+            }
+            else
+            {
+                try
+                {
+                    WebUtils.Email(Config.Default.SmtpHostname,
+                        Config.Default.SmtpPort,
+                        new MailAddress(Config.Default.SmtpFromAddress),
+                        new MailAddress(Config.Default.SmtpToAddress),
+                        new MailAddress(Config.Default.SmtpFromAddress),
+                        "lndcreditwatch notification",
+                        body,
+                        false,
+                        Config.Default.SmtpUsername,
+                        Config.Default.SmtpPassword,
+                        Config.Default.SmtpSsl
+                    );
+                    Console.WriteLine($" email notification sent to {Config.Default.SmtpToAddress}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("*******************************************************************************");
+                    Console.WriteLine(" there was an error sending the email notification");
+                    Console.WriteLine(" please double check your settings in this file, and try again");
+                    Console.WriteLine($" {Config.Default.FileName}");
+                    Console.WriteLine(" error message:");
+                    Console.WriteLine($" {ex.Message}");
+                    Console.WriteLine("*******************************************************************************");
+                    Console.WriteLine();
+                }
+            }
         }
     }
 }

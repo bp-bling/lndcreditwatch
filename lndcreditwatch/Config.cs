@@ -14,12 +14,26 @@ namespace lndcreditwatch
         public RMSecureString APIID { get; set; }
         public RMSecureString APIKey { get; set; }
         public double PreviousCreditBalance { get; set; }
+        public string SmtpFromAddress { get; set; }
+        public string SmtpHostname { get; set; }
+        public RMSecureString SmtpPassword { get; set; }
+        public int SmtpPort { get; set; }
+        public bool SmtpSsl { get; set; }
+        public string SmtpToAddress { get; set; }
+        public string SmtpUsername { get; set; }
 
         public static Config Default = new Config();
 
         public Config() : base()
         {
             PreviousCreditBalance = double.MinValue;
+            SmtpFromAddress = "lndcreditwatch@localhost";
+            SmtpHostname = "localhost";
+            SmtpPassword = "";
+            SmtpPort = 25;
+            SmtpSsl = false;
+            SmtpToAddress = "lndcreditwatch@localhost";
+            SmtpUsername = "";
 
 #if DEBUG
             string SectionName = "DEBUG";
