@@ -23,42 +23,43 @@ namespace lndcreditwatch
         {
             Console.WriteLine(" lndcreditwatch starting up");
 
-            // Handle the midnight hour, which will alert us to the usage from the previous day
-            string DailyUsageFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dailyusage.txt");
-            if (DateTime.Now.Hour == 0)
-            {
-                Console.WriteLine(" midnight hour, alerting previous day's usage");
-                if (File.Exists(DailyUsageFilename))
-                {
-                    // Alert daily usage
-                    SendEmail($"lndcreditwatch daily recap:\r\n\r\n{File.ReadAllText(DailyUsageFilename)}");
-
-                    // And reset
-                    File.Delete(DailyUsageFilename);
-                }
-            }
-
-            Console.WriteLine($" fixed cost per interval: ${Config.Default.FixedCostPerInterval}");
-            Console.WriteLine($" variable cost per interval: ${Config.Default.VariableCostPerInterval}");
-            Console.WriteLine($" total cost per interval: ${Config.Default.TotalCostPerInterval}");
-
             using (LNDynamic client = new LNDynamic(Config.Default.APIID.GetPlainText(), Config.Default.APIKey.GetPlainText()))
             {
                 // Get current credit balance
                 double CurrentCreditBalance = await client.BillingCreditAsync();
-                Console.WriteLine($" current credit balance: ${CurrentCreditBalance}");
+
+                // Handle the midnight hour, which will alert us to the usage from the previous day
+                string DailyUsageFilename = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dailyusage.txt");
+                if (DateTime.Now.Hour == 0)
+                {
+                    Console.WriteLine(" midnight hour, alerting previous day's usage");
+                    if (File.Exists(DailyUsageFilename))
+                    {
+                        // Alert daily usage
+                        SendEmail($"current Luna Node credit balance: ${CurrentCreditBalance}\r\nlndcreditwatch daily recap:\r\n\r\n{File.ReadAllText(DailyUsageFilename)}");
+
+                        // And reset
+                        File.Delete(DailyUsageFilename);
+                    }
+                }
+
+                // Output some information
+                Console.WriteLine($" fixed cost per interval    : ${Config.Default.FixedCostPerInterval}");
+                Console.WriteLine($" variable cost per interval : ${Config.Default.VariableCostPerInterval}");
+                Console.WriteLine($" total cost per interval    : ${Config.Default.TotalCostPerInterval}");
+                Console.WriteLine($" current credit balance     : ${CurrentCreditBalance}");
 
                 // Compare to previous credit balance
                 if (Config.Default.PreviousCreditBalance > double.MinValue)
                 {
-                    Console.WriteLine($" previous credit balance: ${Config.Default.PreviousCreditBalance}");
+                    Console.WriteLine($" previous credit balance    : ${Config.Default.PreviousCreditBalance}");
 
                     double CostForThisInterval = Config.Default.PreviousCreditBalance - CurrentCreditBalance;
-                    Console.WriteLine($" cost for this interval: ${CostForThisInterval}");
+                    Console.WriteLine($" cost for this interval     : ${CostForThisInterval}");
 
                     if (CostForThisInterval > Config.Default.TotalCostPerInterval)
                     {
-                        // We spent too much during this last interval!
+                        // We spent too much during this last interval TODO Calculations correct?
                         double TotalOverspendAmount = CostForThisInterval - Config.Default.TotalCostPerInterval;
                         double TotalOverspendPercent = TotalOverspendAmount / Config.Default.TotalCostPerInterval;
                         double VariableOverspendPercent = TotalOverspendAmount / Config.Default.VariableCostPerInterval;
@@ -69,7 +70,7 @@ namespace lndcreditwatch
                     }
                     else
                     {
-                        // We were within our spending limit
+                        // We were within our spending limit TODO Calculations correct?
                         double TotalUnderspendAmount = Config.Default.TotalCostPerInterval - CostForThisInterval;
                         double TotalUnderspendPercent = TotalUnderspendAmount / Config.Default.TotalCostPerInterval;
                         double VariableUnderspendPercent = TotalUnderspendAmount / Config.Default.VariableCostPerInterval;
@@ -82,7 +83,7 @@ namespace lndcreditwatch
                 else
                 {
                     // No previous balance, so send an email alert saying watch has been setup
-                    Console.WriteLine(" previous credit balance: N/A (looks like this is our first run)");
+                    Console.WriteLine(" previous credit balance     : N/A (looks like this is our first run)");
                     SendEmail("lndcreditwatch is now monitoring your account!");
                 }
 
