@@ -5,7 +5,7 @@ Watch and report credit usage on Luna Node
 
 Download <a href="https://github.com/rickparrish/lndcreditwatch/raw/master/lndcreditwatch/bin/Release/lndapi.dll">lndapi.dll</a> and 
 <a href="https://github.com/rickparrish/lndcreditwatch/raw/master/lndcreditwatch/bin/Release/lndcreditwatch.exe">lndcreditwatch.exe</a> and
-<a href="https://github.com/rickparrish/lndcreditwatch/raw/master/lndcreditwatch/bin/Release/RMLib.dll">RMLib.dll</a> and
+<a href="https://github.com/rickparrish/lndcreditwatch/raw/master/lndcreditwatch/bin/Release/RMLib.dll">RMLib.dll</a>
 
 # USAGE
 
